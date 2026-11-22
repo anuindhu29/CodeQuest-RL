@@ -138,7 +138,7 @@ if "completion_recorded" not in st.session_state:
 
 
 # Display maze
-def display_maze():
+def display_maze(container=None):
 
     robot_row, robot_col = st.session_state.robot_position
 
@@ -188,24 +188,42 @@ def display_maze():
         for col in range(7):
 
             if (row, col) == st.session_state.robot_position:
+
                 cell = ARROWS[st.session_state.robot_direction]
+
                 html += f'<div class="cell robot">{cell}</div>'
 
             elif (row, col) == GOAL:
+
                 html += '<div class="cell goal">🏁</div>'
 
             elif (row, col) == START:
-                html += '<div class="cell start">🚩</div>'
+
+                html += '<div class="cell start">START</div>'
 
             elif MAZE[row][col] == 1:
+
                 html += '<div class="cell wall">🧱</div>'
 
             else:
-                html += '<div class="cell">⬜</div>'
+
+                html += '<div class="cell"></div>'
 
     html += "</div>"
 
-    st.markdown(html, unsafe_allow_html=True)
+    if container is not None:
+
+        container.markdown(
+            html,
+            unsafe_allow_html=True
+        )
+
+    else:
+
+        st.markdown(
+            html,
+            unsafe_allow_html=True
+        )
 
 # =========================
 # SAVE CHALLENGE RESULTS
@@ -293,7 +311,7 @@ def turn_left():
 
 
 # Safe command interpreter
-def run_student_code(code):
+def run_student_code(code, maze_display):
 
     commands = {
         "move_forward()": move_forward,
@@ -323,10 +341,18 @@ def run_student_code(code):
 
             return
 
+        # Execute one command
         commands[line]()
 
         executed += 1
 
+        # Update maze immediately
+        display_maze(maze_display)
+
+        # Pause so the learner can observe
+        time.sleep(0.45)
+
+        # Stop if the goal has been reached
         if st.session_state.game_won:
             break
 
@@ -343,21 +369,21 @@ def run_student_code(code):
     elif errors_during_run > 0:
 
         st.session_state.game_message = (
-            f"Program executed {executed} commands, "
-            f"but encountered {errors_during_run} error(s). "
-            "Check your robot's path."
+            f"Executed {executed} commands. "
+            f"Errors: {errors_during_run}. "
+            "Review your path."
         )
 
     elif executed > 0:
 
         st.session_state.game_message = (
-            f"Program executed {executed} commands successfully."
+            f"Successfully executed {executed} commands."
         )
 
     else:
 
         st.session_state.game_message = (
-            "No commands were entered."
+            "No commands entered."
         )
 # =========================
 # CHALLENGE SYSTEM
@@ -490,7 +516,9 @@ with left:
     with stat4:
         st.metric("Errors", st.session_state.errors)
 
-    display_maze()
+    maze_display = st.empty()
+
+    display_maze(maze_display)
 
     st.info(st.session_state.game_message)
 
@@ -683,7 +711,7 @@ move_forward()""",
 
                 st.session_state.attempts += 1
 
-                run_student_code(student_code)
+                run_student_code(student_code, maze_display)
 
                 st.rerun()
 
