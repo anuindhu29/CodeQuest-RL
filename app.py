@@ -1,6 +1,8 @@
 
 import streamlit as st
 import time
+import csv
+import io
 
 st.set_page_config(
     page_title="CodeQuest",
@@ -70,6 +72,12 @@ if "moves" not in st.session_state:
 
 if "game_won" not in st.session_state:
     st.session_state.game_won = False
+    
+if "challenge_history" not in st.session_state:
+    st.session_state.challenge_history = []
+
+if "completion_recorded" not in st.session_state:
+    st.session_state.completion_recorded = False
 
 
 # Display maze
@@ -142,7 +150,34 @@ def display_maze():
 
     st.markdown(html, unsafe_allow_html=True)
 
+# =========================
+# SAVE CHALLENGE RESULTS
+# =========================
 
+def save_challenge_result():
+
+    if st.session_state.completion_recorded:
+        return
+
+    record = {
+        "Challenge": "Level 1 - Sequence",
+        "Topic": "Sequential Programming",
+        "Success": True,
+        "Completion Time (sec)": round(
+            st.session_state.completion_time, 2
+        ),
+        "Attempts": st.session_state.attempts,
+        "Moves": st.session_state.moves,
+        "Errors": st.session_state.errors,
+        "Completed At": time.strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+    }
+
+    st.session_state.challenge_history.append(record)
+
+    st.session_state.completion_recorded = True
+    
 # Robot movement
 def move_forward():
 
@@ -175,6 +210,7 @@ def move_forward():
             st.session_state.game_message = (
                 "🎉 Congratulations! You reached the goal!"
             )
+             save_challenge_result()
         else:
         
             st.session_state.errors += 1
@@ -551,6 +587,7 @@ move_forward()""",
             st.session_state.attempts = 0
 
             st.session_state.game_won = False
+            st.session_state.completion_recorded = False
             st.session_state.completion_time = None
 
             st.session_state.challenge_started_at = time.time()
@@ -609,3 +646,47 @@ move_forward()""",
             )
 
             st.rerun()
+# =========================
+# LEARNING HISTORY
+# =========================
+
+st.markdown("---")
+
+st.markdown("## Challenge History")
+
+if st.session_state.challenge_history:
+
+    st.dataframe(
+        st.session_state.challenge_history,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # Create CSV download
+    csv_buffer = io.StringIO()
+
+    fieldnames = st.session_state.challenge_history[0].keys()
+
+    writer = csv.DictWriter(
+        csv_buffer,
+        fieldnames=fieldnames
+    )
+
+    writer.writeheader()
+
+    writer.writerows(
+        st.session_state.challenge_history
+    )
+
+    st.download_button(
+        label="Download Learning History (CSV)",
+        data=csv_buffer.getvalue(),
+        file_name="codequest_learning_history.csv",
+        mime="text/csv"
+    )
+
+else:
+
+    st.write(
+        "Your completed challenges will appear here."
+    )
