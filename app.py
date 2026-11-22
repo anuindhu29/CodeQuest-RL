@@ -459,8 +459,6 @@ if st.session_state.game_won:
     You successfully used sequential programming
     instructions to navigate the maze.
     """)
-    if st.session_state.game_won:
-
     st.markdown("### 📈 Your Performance")
 
     st.write(f"⏱️ Time: {st.session_state.completion_time:.2f} seconds")
