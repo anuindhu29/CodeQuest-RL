@@ -209,12 +209,65 @@ def run_student_code(code):
         )
 
 
-# Layout
+# =========================
+# CHALLENGE SYSTEM
+# =========================
+
+st.sidebar.title("🎮 Game Levels")
+
+st.sidebar.markdown("### Level 1")
+st.sidebar.success("🟢 Sequence Programming")
+
+st.sidebar.markdown("""
+### 🎯 Your Mission
+
+Guide the robot 🤖 from the starting
+position 🚩 to the goal 🏁.
+
+### 📚 Learning Objective
+
+Learn how the order of instructions
+(sequence) affects program execution.
+
+### 🧠 Rules
+
+- Commands execute from top to bottom.
+- The robot moves in the direction it faces.
+- Walls cannot be crossed.
+- Reach the goal to complete the level.
+
+### 🛠️ Commands
+
+`move_forward()`
+
+`turn_right()`
+
+`turn_left()`
+""")
+
+st.sidebar.markdown("---")
+
+st.sidebar.markdown("### 🏆 Progress")
+
+if st.session_state.game_won:
+    st.sidebar.success("Level 1 Completed! 🎉")
+else:
+    st.sidebar.info("Level 1: In Progress")
+
+st.sidebar.markdown(
+    f"**Moves:** {st.session_state.moves}"
+)
+
+
+# =========================
+# MAIN GAME LAYOUT
+# =========================
+
 left, right = st.columns([1.2, 1])
 
 with left:
 
-    st.markdown("### 🗺️ Robot Maze")
+    st.markdown("## 🗺️ Robot Maze")
 
     display_maze()
 
@@ -222,11 +275,14 @@ with left:
 
     st.metric("Number of Moves", st.session_state.moves)
 
+
 with right:
 
-    st.markdown("### 💻 Programming Area")
+    st.markdown("## 💻 Programming Area")
 
-    st.markdown("**Available commands:**")
+    st.markdown(
+        "Write your program using the available commands."
+    )
 
     st.code(
         """move_forward()
@@ -239,33 +295,53 @@ turn_left()""",
         "Write your program here:",
         height=250,
         placeholder="""move_forward()
-move_forward()
 turn_right()
 move_forward()"""
     )
 
-    if st.button("▶ Run Program", type="primary"):
+    col1, col2 = st.columns(2)
 
-        st.session_state.game_message = "Program running..."
+    with col1:
 
-        run_student_code(student_code)
+        if st.button("▶ Run Program", type="primary"):
 
-        st.rerun()
+            st.session_state.game_message = "Program running..."
 
-    if st.button("🔄 Reset Game"):
+            run_student_code(student_code)
 
-        st.session_state.robot_position = START
-        st.session_state.robot_direction = 0
-        st.session_state.game_message = "Game reset! Try again."
-        st.session_state.moves = 0
-        st.session_state.game_won = False
+            st.rerun()
 
-        st.rerun()
+    with col2:
+
+        if st.button("🔄 Reset Game"):
+
+            st.session_state.robot_position = START
+            st.session_state.robot_direction = 0
+            st.session_state.game_message = "Game reset! Try again."
+            st.session_state.moves = 0
+            st.session_state.game_won = False
+
+            st.rerun()
+
+
+# =========================
+# LEVEL COMPLETION
+# =========================
 
 if st.session_state.game_won:
 
     st.balloons()
 
     st.success(
-        "🏆 Level Completed! You successfully programmed the robot!"
+        "🏆 Level 1 Completed! "
+        "You successfully programmed the robot!"
     )
+
+    st.markdown("### 🎉 Achievement Unlocked")
+
+    st.markdown("""
+    🥇 **Sequence Master**
+
+    You successfully used sequential programming
+    instructions to navigate the maze.
+    """)
