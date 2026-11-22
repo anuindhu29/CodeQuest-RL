@@ -210,7 +210,8 @@ def move_forward():
             st.session_state.game_message = (
                 "🎉 Congratulations! You reached the goal!"
             )
-             save_challenge_result()
+            save_challenge_result()
+            
         else:
         
             st.session_state.errors += 1
