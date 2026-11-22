@@ -201,7 +201,7 @@ def concept_skill_labels(concept):
     if concept=='loops': return ['repetition','loop tracing','debugging']
     return ['condition reasoning','branch tracing','debugging']
 
-QUIZZES={
+QUIZZES_A={
 'sequence':[
 ('What happens when commands are executed?', ['Randomly','Top to bottom in order','All at once','Only the last command'],1,'ordering'),
 ('Which command changes the robot direction?', ['move_forward()','turn_right()','start()','repeat()'],1,'direction'),
@@ -214,6 +214,20 @@ QUIZZES={
 ('A conditional is used to…', ['repeat always','make a decision based on a condition','store a number','end a program'],1,'condition reasoning'),
 ('What does else represent?', ['Another loop','The alternative when if condition is false','A comment','A command'],1,'branch tracing'),
 ('If wall_ahead() is true, which branch executes?', ['if branch','else branch','both','neither'],0,'condition reasoning')]
+}
+QUIZZES_B={
+'sequence':[
+('A program contains turn_right() then move_forward(). What is first?', ['Moving','Turning right','Stopping','Repeating'],1,'ordering'),
+('Which pair changes direction and then advances?', ['move_forward(), move_forward()','turn_left(), move_forward()','start(), move_forward()','repeat(), turn_left()'],1,'direction'),
+('What happens if move_forward() and turn_right() are swapped?', ['Turns before moving','Moves before turning','No commands execute','Repeats twice'],1,'ordering')],
+'loops':[
+('How many times does move_forward() execute in range(5)?', ['4','5','6','Once'],1,'repetition'),
+('Which is the main benefit of a loop?', ['It makes a decision','It avoids repeated code','It changes direction automatically','It ends a program'],1,'loop tracing'),
+('A block inside range(2) is executed…', ['0 times','1 time','2 times','3 times'],2,'repetition')],
+'conditionals':[
+('When is the else block executed?', ['When if is true','When if condition is false','Always','Only in loops'],1,'branch tracing'),
+('What does if path_clear() test?', ['Whether a path ahead is clear','How many commands exist','Whether a loop repeats','Robot speed'],0,'condition reasoning'),
+('If wall_ahead() is false, which block runs?', ['if','else','both','neither'],1,'branch tracing')]
 }
 
 def record_game_transition(success, errors, attempts, elapsed):
@@ -643,10 +657,12 @@ if selected_page == "Game":
 # ---------------- Learning / Assessment / DQN navigation ----------------
 
 elif selected_page == "Learn":
-    st.markdown("# Personalized Learning")
-    st.caption("DQN selects an instructional strategy from your current learner profile. The robot is not controlled by the DQN.")
+    st.markdown("# Personalized Learning Tutor")
+    st.caption("DQN selects an instructional action. Each choice opens an actual lesson or practice activity.")
     concept=level['concept']; state=learner_vector(concept)
-    if st.button("Ask DQN to select my teaching strategy",type="primary",disabled=concept not in st.session_state.diagnostic_scores):
+    if concept not in st.session_state.diagnostic_scores:
+        st.warning("Start with Assessment A (diagnostic) to establish your learner profile.")
+    if st.button("Ask DQN to select my next learning activity",type="primary",disabled=concept not in st.session_state.diagnostic_scores):
         idx,reason,q=dqn_choose_action(state,explore=True)
         st.session_state.dqn_last_state=state.copy(); st.session_state.dqn_last_action_idx=idx
         st.session_state.dqn_last_action=DQN_ACTIONS[idx]; st.session_state.dqn_last_q_values=q.tolist()
@@ -655,30 +671,73 @@ elif selected_page == "Learn":
         st.success(f"DQN selected: **{DQN_ACTIONS[idx]}**")
         st.caption(reason)
     action=st.session_state.active_teaching_action
-    if action:
+    if action and concept in st.session_state.diagnostic_scores:
         title,desc,example=LESSON_CONTENT[action]
         st.markdown(f"## {title}")
         st.write(desc)
-        st.code(example,language='python')
-        if action in ['Visual explanation','Worked example','Guided practice','Debugging exercise','Revision']:
-            st.info(f"Target concept: **{level['topic']}**. After studying this activity, take the post-test from the Assess page.")
-        elif action=='Advance concept':
-            st.info("Complete a mastery check before moving to the next concept.")
-        if st.button("Mark lesson/activity completed"):
+        st.markdown("### Mini-lesson")
+        if concept=="sequence":
+            st.markdown("**Sequence:** instructions run from the first line to the last. Changing their order can change the robot's route.")
+            st.code("move_forward()\nturn_right()\nmove_forward()",language="python")
+            st.markdown("1. Move one cell.\n2. Turn right (position stays the same).\n3. Move in the new direction.")
+        elif concept=="loops":
+            st.markdown("**Loop:** repeat a block rather than writing the same command several times. Indentation shows what belongs to the loop.")
+            st.code("for i in range(3):\n    move_forward()",language="python")
+            st.markdown("The indented command runs **3 times**. `range(3)` means three iterations in this game.")
+        else:
+            st.markdown("**Conditional:** test a condition and execute the matching branch.")
+            st.code("if wall_ahead():\n    turn_right()\nelse:\n    move_forward()",language="python")
+            st.markdown("If a wall is ahead, turn right; otherwise, move forward. Only one branch executes.")
+        with st.expander("Worked example: trace each step"):
+            st.code(example,language="python")
+            if concept=="sequence":
+                st.table(pd.DataFrame([{"Step":1,"Instruction":"move_forward()","Effect":"Move one cell forward"},{"Step":2,"Instruction":"turn_right()","Effect":"Change facing direction"},{"Step":3,"Instruction":"move_forward()","Effect":"Move in the new direction"}]))
+            elif concept=="loops":
+                st.table(pd.DataFrame([{"Iteration":i,"Command":"move_forward()","Effect":f"Move {i} of 3"} for i in range(1,4)]))
+            else:
+                st.table(pd.DataFrame([{"Condition":"wall_ahead() = True","Executed branch":"if","Action":"turn_right()"},{"Condition":"wall_ahead() = False","Executed branch":"else","Action":"move_forward()"}]))
+        st.markdown("### Interactive guided practice")
+        if concept=="sequence":
+            prompt="A robot must turn left first and then move. What is the first command?"
+            opts=["move_forward()","turn_left()","turn_right()","for i in range(3):"]; correct=1
+        elif concept=="loops":
+            prompt="You need to move forward exactly 4 times. Which loop is correct?"
+            opts=["for i in range(3): move_forward()","for i in range(4): move_forward()","for i in range(5): move_forward()","move_forward() once"]; correct=1
+        else:
+            prompt="If there is no wall ahead, which branch executes?"
+            opts=["if wall_ahead():","else:","Both branches","Neither branch"]; correct=1
+        with st.form("guided_practice_form"):
+            response=st.radio(prompt,opts,key=f"guided_{concept}_{action}")
+            submitted=st.form_submit_button("Check my answer")
+        if submitted:
+            is_correct=opts.index(response)==correct
+            st.session_state.guided_practice_result={"concept":concept,"correct":is_correct}
+            if is_correct: st.success("Correct! You applied the concept.")
+            else:
+                st.error("Not quite. Review the mini-lesson and try again.")
+                st.info("Hint: " + ("command order matters." if concept=="sequence" else "the number in range(n) is the repetition count." if concept=="loops" else "else runs when the if condition is false."))
+        result=st.session_state.get("guided_practice_result",{})
+        if result.get("concept")==concept: st.caption("Latest guided practice: "+("Correct" if result.get("correct") else "Needs another try"))
+        st.markdown("### Apply it")
+        st.write("Try a maze challenge independently, then complete Assessment B (different questions) to measure learning.")
+        if st.button("Mark teaching activity completed"):
             st.session_state.teaching_completed=True
-            st.success("Activity marked complete. Go to Assess for a new post-test.")
-    else:
-        st.info("Complete the diagnostic assessment for this concept first. The DQN will use your diagnostic results to choose a teaching strategy.")
+            st.success("Activity recorded. Next: Game challenge, then Assessment B.")
+    elif concept not in st.session_state.diagnostic_scores:
+        st.info("Open **Assess → Diagnostic (Assessment A)** first.")
     if st.session_state.dqn_last_q_values:
         qdf=pd.DataFrame({'Teaching action':DQN_ACTIONS,'Predicted Q-value':st.session_state.dqn_last_q_values})
         st.markdown("### DQN action values for this learner")
         st.bar_chart(qdf.set_index('Teaching action'))
 
+
 elif selected_page == "Assess":
     st.markdown("# Diagnostic & Post-Learning Assessment")
-    concept=level['concept']; quiz=QUIZZES[concept]
+    st.caption("Assessment A and B use different questions targeting the same skills to reduce direct question repetition.")
+    concept=level['concept']
     mode=st.radio("Assessment type",["Diagnostic (before teaching)","Post-test (after teaching)"],horizontal=True)
     is_post=mode.startswith('Post')
+    quiz=(QUIZZES_B if is_post else QUIZZES_A)[concept]
     if is_post and not st.session_state.teaching_completed:
         st.warning("Complete a personalized teaching activity first. You can still use this page for a diagnostic.")
     with st.form('assessment_form'):
@@ -730,6 +789,12 @@ elif selected_page == "Learner Profile":
             for skill,val in skills.items(): rows.append({'Concept':c.title(),'Skill':skill,'Score':val})
         if rows:
             st.dataframe(pd.DataFrame(rows),use_container_width=True,hide_index=True)
+    st.markdown("### Diagnostic vs post-test learning gain")
+    gain_rows=[]
+    for c in concepts:
+        pre=st.session_state.diagnostic_scores.get(c); post=st.session_state.posttest_scores.get(c)
+        gain_rows.append({"Concept":c.title(),"Assessment A":None if pre is None else f"{pre:.0%}","Assessment B":None if post is None else f"{post:.0%}","Gain":None if pre is None or post is None else f"{post-pre:+.0%}"})
+    st.dataframe(pd.DataFrame(gain_rows),use_container_width=True,hide_index=True)
     if hist:
         df=pd.DataFrame(hist); st.markdown("### Game performance")
         a,b,c,d=st.columns(4); a.metric('Challenges',len(hist)); b.metric('Success rate',f"{100*sum(x.get('Success',False) for x in hist)/len(hist):.0f}%")
