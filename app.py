@@ -1,5 +1,6 @@
 
 import streamlit as st
+import time
 
 st.set_page_config(
     page_title="CodeQuest",
@@ -38,6 +39,23 @@ DIRECTIONS = [
 ARROWS = ["⬆️", "➡️", "⬇️", "⬅️"]
 
 # Initialize game
+# Challenge timer and performance tracking
+
+if "challenge_started_at" not in st.session_state:
+    st.session_state.challenge_started_at = None
+
+if "completion_time" not in st.session_state:
+    st.session_state.completion_time = None
+
+if "attempts" not in st.session_state:
+    st.session_state.attempts = 0
+
+if "errors" not in st.session_state:
+    st.session_state.errors = 0
+
+if "challenge_active" not in st.session_state:
+    st.session_state.challenge_active = False
+    
 if "robot_position" not in st.session_state:
     st.session_state.robot_position = START
 
@@ -145,12 +163,25 @@ def move_forward():
         st.session_state.moves += 1
 
         if st.session_state.robot_position == GOAL:
+        
             st.session_state.game_won = True
-            st.session_state.game_message = "🎉 Congratulations! You reached the goal!"
-
-    else:
-
-        st.session_state.game_message = "🧱 You hit a wall! Try another direction."
+        
+            st.session_state.completion_time = (
+                time.time() - st.session_state.challenge_started_at
+            )
+        
+            st.session_state.challenge_active = False
+        
+            st.session_state.game_message = (
+                "🎉 Congratulations! You reached the goal!"
+            )
+        else:
+        
+            st.session_state.errors += 1
+        
+            st.session_state.game_message = (
+                "🧱 You hit a wall! Try another direction."
+            )
 
 
 def turn_right():
@@ -188,11 +219,13 @@ def run_student_code(code):
             continue
 
         if line not in commands:
-
+        
+            st.session_state.errors += 1
+        
             st.session_state.game_message = (
                 f"❌ Invalid command: {line}"
             )
-
+        
             return
 
         commands[line]()
@@ -258,7 +291,43 @@ st.sidebar.markdown(
     f"**Moves:** {st.session_state.moves}"
 )
 
+# =========================
+# LIVE CHALLENGE TIMER
+# =========================
 
+@st.fragment(run_every="1s")
+def show_timer():
+
+    if st.session_state.challenge_active:
+
+        elapsed = (
+            time.time() -
+            st.session_state.challenge_started_at
+        )
+
+        minutes = int(elapsed // 60)
+        seconds = int(elapsed % 60)
+
+        st.metric(
+            "⏱️ Time Elapsed",
+            f"{minutes:02d}:{seconds:02d}"
+        )
+
+    elif st.session_state.completion_time is not None:
+
+        elapsed = st.session_state.completion_time
+
+        minutes = int(elapsed // 60)
+        seconds = int(elapsed % 60)
+
+        st.metric(
+            "🏁 Completion Time",
+            f"{minutes:02d}:{seconds:02d}"
+        )
+
+    else:
+
+        st.metric("⏱️ Time Elapsed", "00:00")
 # =========================
 # MAIN GAME LAYOUT
 # =========================
@@ -268,12 +337,20 @@ left, right = st.columns([1.2, 1])
 with left:
 
     st.markdown("## 🗺️ Robot Maze")
+    show_timer()
 
     display_maze()
 
     st.info(st.session_state.game_message)
 
     st.metric("Number of Moves", st.session_state.moves)
+    st.markdown("### 📊 Challenge Statistics")
+
+    st.metric("🔄 Attempts", st.session_state.attempts)
+    
+    st.metric("❌ Errors", st.session_state.errors)
+    
+    st.metric("🚶 Total Moves", st.session_state.moves)
 
 
 with right:
@@ -299,28 +376,65 @@ turn_right()
 move_forward()"""
     )
 
+    # Start challenge
+if st.button("🚀 Start Challenge", type="primary"):
+
+    st.session_state.robot_position = START
+    st.session_state.robot_direction = 0
+
+    st.session_state.moves = 0
+    st.session_state.errors = 0
+    st.session_state.attempts = 0
+
+    st.session_state.game_won = False
+    st.session_state.completion_time = None
+
+    st.session_state.challenge_started_at = time.time()
+    st.session_state.challenge_active = True
+
+    st.session_state.game_message = "Challenge started! Good luck!"
+
+    st.rerun()
+
+
     col1, col2 = st.columns(2)
-
+    
     with col1:
-
+    
         if st.button("▶ Run Program", type="primary"):
-
-            st.session_state.game_message = "Program running..."
-
-            run_student_code(student_code)
-
-            st.rerun()
-
+    
+            if not st.session_state.challenge_active:
+    
+                st.warning("Please click Start Challenge first!")
+    
+            else:
+    
+                st.session_state.attempts += 1
+    
+                run_student_code(student_code)
+    
+                st.rerun()
+    
+    
     with col2:
-
+    
         if st.button("🔄 Reset Game"):
-
+    
             st.session_state.robot_position = START
             st.session_state.robot_direction = 0
+    
             st.session_state.game_message = "Game reset! Try again."
+    
             st.session_state.moves = 0
+            st.session_state.errors = 0
+            st.session_state.attempts = 0
+    
             st.session_state.game_won = False
-
+            st.session_state.completion_time = None
+    
+            st.session_state.challenge_started_at = None
+            st.session_state.challenge_active = False
+    
             st.rerun()
 
 
@@ -345,3 +459,14 @@ if st.session_state.game_won:
     You successfully used sequential programming
     instructions to navigate the maze.
     """)
+    if st.session_state.game_won:
+
+    st.markdown("### 📈 Your Performance")
+
+    st.write(f"⏱️ Time: {st.session_state.completion_time:.2f} seconds")
+
+    st.write(f"🔄 Attempts: {st.session_state.attempts}")
+
+    st.write(f"❌ Errors: {st.session_state.errors}")
+
+    st.write(f"🚶 Moves: {st.session_state.moves}")
