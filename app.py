@@ -29,7 +29,64 @@ MAZE = [
 ]
 
 START = (6, 0)
-GOAL = (0, 6)
+
+# =========================
+# LEVEL 1 CHALLENGES
+# =========================
+
+CHALLENGES = {
+    "Mission 1 - First Checkpoint": {
+        "goal": (4, 6),
+        "difficulty": "Easy",
+        "description": "Reach the first checkpoint using ordered commands."
+    },
+
+    "Mission 2 - Intermediate Route": {
+        "goal": (2, 6),
+        "difficulty": "Medium",
+        "description": "Navigate further through the maze using a sequence."
+    },
+
+    "Mission 3 - Final Destination": {
+        "goal": (0, 6),
+        "difficulty": "Hard",
+        "description": "Reach the final destination through a longer route."
+    }
+}
+
+# Select challenge
+selected_challenge = st.sidebar.selectbox(
+    "Select Challenge",
+    list(CHALLENGES.keys())
+)
+
+GOAL = CHALLENGES[selected_challenge]["goal"]
+# Reset game when selected challenge changes
+
+if (
+    "previous_challenge" not in st.session_state
+    or st.session_state.previous_challenge != selected_challenge
+):
+
+    st.session_state.previous_challenge = selected_challenge
+
+    st.session_state.robot_position = START
+    st.session_state.robot_direction = 0
+
+    st.session_state.moves = 0
+    st.session_state.errors = 0
+    st.session_state.attempts = 0
+
+    st.session_state.game_won = False
+    st.session_state.completion_time = None
+
+    st.session_state.challenge_started_at = None
+    st.session_state.challenge_active = False
+    st.session_state.completion_recorded = False
+
+    st.session_state.game_message = (
+        "Select Start Challenge when you are ready."
+    )
 
 DIRECTIONS = [
     (-1, 0),  # Up
@@ -160,7 +217,7 @@ def save_challenge_result():
         return
 
     record = {
-        "Challenge": "Level 1 - Sequence",
+        "Challenge": selected_challenge,
         "Topic": "Sequential Programming",
         "Success": True,
         "Completion Time (sec)": round(
@@ -393,7 +450,15 @@ def show_timer():
 # MAIN GAME LAYOUT
 # =========================
 
-st.markdown("## Level 1: Sequential Programming")
+st.markdown(f"## {selected_challenge}")
+
+st.caption(
+    f"Difficulty: {CHALLENGES[selected_challenge]['difficulty']}"
+)
+
+st.write(
+    CHALLENGES[selected_challenge]["description"]
+)
 
 st.markdown(
     "Guide the robot from the starting point to the goal "
