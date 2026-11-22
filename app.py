@@ -459,6 +459,92 @@ with left:
             "What would happen if you changed the order of "
             "the robot's commands?"
         )
+# =========================
+# FULL-WIDTH LEARNING REFLECTION
+# =========================
+
+if st.session_state.game_won:
+
+    st.markdown("---")
+
+    st.markdown("# Concept Learned: Sequential Programming")
+
+    st.markdown(
+        "You completed the maze by giving the robot "
+        "instructions in the correct order."
+    )
+
+    # Two-column learning section
+    concept_col, example_col = st.columns(2)
+
+    with concept_col:
+
+        with st.container(border=True):
+
+            st.markdown("### What is Sequential Programming?")
+
+            st.write(
+                "Sequential programming is a programming "
+                "approach in which instructions are executed "
+                "one after another in a specific order."
+            )
+
+            st.write(
+                "The computer follows the instructions in "
+                "the order they are written. Changing the "
+                "order can change the program's output."
+            )
+
+    with example_col:
+
+        with st.container(border=True):
+
+            st.markdown("### Example")
+
+            st.code(
+                """move_forward()
+turn_right()
+move_forward()""",
+                language="python"
+            )
+
+            st.write(
+                "First, the robot moves forward. "
+                "Next, it turns right. Finally, it moves "
+                "forward again."
+            )
+
+    # Full-width real-world analogy
+    st.markdown("### Real-World Connection")
+
+    with st.container(border=True):
+
+        st.write(
+            "Consider preparing a cup of tea. You first boil "
+            "water, then add tea powder, and then add milk. "
+            "These steps follow a particular sequence."
+        )
+
+        st.write(
+            "Similarly, in programming, the order of "
+            "instructions determines how a task is performed."
+        )
+
+    # Full-width takeaway
+    st.markdown("### Key Takeaway")
+
+    st.info(
+        "A sequence is an ordered set of instructions "
+        "executed one after another. The order of "
+        "instructions matters."
+    )
+
+    st.markdown("### Reflection")
+
+    st.write(
+        "Think about how changing the order of the "
+        "robot's commands would change its path."
+    )
 
 
 # =========================
