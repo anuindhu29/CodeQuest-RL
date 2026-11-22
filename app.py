@@ -395,6 +395,71 @@ with left:
                 st.session_state.errors
             )
 
+        # =========================
+        # LEARNING REFLECTION
+        # =========================
+        
+        st.markdown("---")
+        
+        st.markdown("## Concept Learned: Sequential Programming")
+        
+        st.markdown("""
+        ### What did you learn?
+        
+        In programming, instructions are executed in a specific
+        order, one after another. This is called **sequential
+        programming**.
+        
+        For example:
+        """)
+        
+        st.code(
+            """move_forward()
+        turn_right()
+        move_forward()""",
+            language="python"
+        )
+        
+        st.markdown("""
+        The robot executes the first instruction, then the second,
+        and finally the third.
+        
+        The order of instructions matters. If you change the order,
+        the robot may follow a completely different path.
+        
+        ### Real-world example
+        
+        Imagine making tea:
+        
+        1. Boil water.
+        2. Add tea powder.
+        3. Add milk.
+        4. Serve.
+        
+        If you perform these steps in the wrong order, the result
+        may be different.
+        
+        Programming works in a similar way. A computer follows
+        the instructions in the order that you provide them.
+        
+        ### Key takeaway
+        
+        **A sequence is an ordered set of instructions executed
+        one after another.**
+        
+        You have just used sequential programming to control
+        a robot and solve a maze.
+        """)
+        
+        st.markdown("---")
+        
+        st.markdown("### Think about it")
+        
+        st.write(
+            "What would happen if you changed the order of "
+            "the robot's commands?"
+        )
+
 
 # =========================
 # RIGHT SIDE: CODE EDITOR
