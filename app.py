@@ -321,45 +321,90 @@ def show_timer():
         seconds = int(elapsed % 60)
 
         st.metric(
-            "🏁 Completion Time",
+            " ⏱️ Time",
             f"{minutes:02d}:{seconds:02d}"
         )
 
     else:
 
-        st.metric("⏱️ Time Elapsed", "00:00")
+        st.metric("⏱️ Time ", "00:00")
+
 # =========================
 # MAIN GAME LAYOUT
 # =========================
 
-left, right = st.columns([1.2, 1])
+st.markdown("## Level 1: Sequential Programming")
+
+st.markdown(
+    "Guide the robot from the starting point to the goal "
+    "using sequential commands."
+)
+
+left, right = st.columns([1.15, 1])
+
+# =========================
+# LEFT SIDE: MAZE + STATS
+# =========================
 
 with left:
 
-    st.markdown("## 🗺️ Robot Maze")
-    show_timer()
+    st.markdown("### Robot Maze")
+
+    # Compact horizontal statistics
+    stat1, stat2, stat3, stat4 = st.columns(4)
+
+    with stat1:
+        show_timer()
+
+    with stat2:
+        st.metric("Moves", st.session_state.moves)
+
+    with stat3:
+        st.metric("Attempts", st.session_state.attempts)
+
+    with stat4:
+        st.metric("Errors", st.session_state.errors)
 
     display_maze()
 
     st.info(st.session_state.game_message)
 
-    st.metric("Number of Moves", st.session_state.moves)
-    st.markdown("### 📊 Challenge Statistics")
+    if st.session_state.game_won:
 
-    st.metric("🔄 Attempts", st.session_state.attempts)
-    
-    st.metric("❌ Errors", st.session_state.errors)
-    
-    st.metric("🚶 Total Moves", st.session_state.moves)
+        st.success("Challenge completed successfully!")
 
+        st.markdown("### Performance")
+
+        perf1, perf2, perf3 = st.columns(3)
+
+        with perf1:
+            st.metric(
+                "Completion Time",
+                f"{st.session_state.completion_time:.1f} sec"
+            )
+
+        with perf2:
+            st.metric(
+                "Attempts",
+                st.session_state.attempts
+            )
+
+        with perf3:
+            st.metric(
+                "Errors",
+                st.session_state.errors
+            )
+
+
+# =========================
+# RIGHT SIDE: CODE EDITOR
+# =========================
 
 with right:
 
-    st.markdown("## 💻 Programming Area")
+    st.markdown("### Programming Editor")
 
-    st.markdown(
-        "Write your program using the available commands."
-    )
+    st.markdown("Available commands")
 
     st.code(
         """move_forward()
@@ -369,102 +414,88 @@ turn_left()""",
     )
 
     student_code = st.text_area(
-        "Write your program here:",
-        height=250,
+        "Write your program",
+        height=300,
         placeholder="""move_forward()
+move_forward()
 turn_right()
-move_forward()"""
+move_forward()""",
+        key="student_code"
     )
 
-    # Start challenge
-if st.button("🚀 Start Challenge", type="primary"):
+    # Buttons arranged horizontally
+    button1, button2, button3 = st.columns(3)
 
-    st.session_state.robot_position = START
-    st.session_state.robot_direction = 0
+    with button1:
 
-    st.session_state.moves = 0
-    st.session_state.errors = 0
-    st.session_state.attempts = 0
+        if st.button(
+            "Start Challenge",
+            use_container_width=True
+        ):
 
-    st.session_state.game_won = False
-    st.session_state.completion_time = None
-
-    st.session_state.challenge_started_at = time.time()
-    st.session_state.challenge_active = True
-
-    st.session_state.game_message = "Challenge started! Good luck!"
-
-    st.rerun()
-
-
-    col1, col2 = st.columns(2)
-    
-    with col1:
-    
-        if st.button("▶ Run Program", type="primary"):
-    
-            if not st.session_state.challenge_active:
-    
-                st.warning("Please click Start Challenge first!")
-    
-            else:
-    
-                st.session_state.attempts += 1
-    
-                run_student_code(student_code)
-    
-                st.rerun()
-    
-    
-    with col2:
-    
-        if st.button("🔄 Reset Game"):
-    
             st.session_state.robot_position = START
             st.session_state.robot_direction = 0
-    
-            st.session_state.game_message = "Game reset! Try again."
-    
+
             st.session_state.moves = 0
             st.session_state.errors = 0
             st.session_state.attempts = 0
-    
+
             st.session_state.game_won = False
             st.session_state.completion_time = None
-    
-            st.session_state.challenge_started_at = None
-            st.session_state.challenge_active = False
-    
+
+            st.session_state.challenge_started_at = time.time()
+            st.session_state.challenge_active = True
+
+            st.session_state.game_message = (
+                "Challenge started. Begin programming."
+            )
+
             st.rerun()
 
+    with button2:
 
-# =========================
-# LEVEL COMPLETION
-# =========================
+        if st.button(
+            "Run Program",
+            type="primary",
+            use_container_width=True
+        ):
 
-if st.session_state.game_won:
+            if not st.session_state.challenge_active:
 
-    st.balloons()
+                st.warning(
+                    "Start the challenge before running your program."
+                )
 
-    st.success(
-        "🏆 Level 1 Completed! "
-        "You successfully programmed the robot!"
-    )
+            else:
 
-    st.markdown("### 🎉 Achievement Unlocked")
+                st.session_state.attempts += 1
 
-    st.markdown("""
-    🥇 **Sequence Master**
+                run_student_code(student_code)
 
-    You successfully used sequential programming
-    instructions to navigate the maze.
-    """)
-    st.markdown("### 📈 Your Performance")
+                st.rerun()
 
-    st.write(f"⏱️ Time: {st.session_state.completion_time:.2f} seconds")
+    with button3:
 
-    st.write(f"🔄 Attempts: {st.session_state.attempts}")
+        if st.button(
+            "Reset",
+            use_container_width=True
+        ):
 
-    st.write(f"❌ Errors: {st.session_state.errors}")
+            st.session_state.robot_position = START
+            st.session_state.robot_direction = 0
 
-    st.write(f"🚶 Moves: {st.session_state.moves}")
+            st.session_state.moves = 0
+            st.session_state.errors = 0
+            st.session_state.attempts = 0
+
+            st.session_state.game_won = False
+            st.session_state.completion_time = None
+
+            st.session_state.challenge_started_at = None
+            st.session_state.challenge_active = False
+
+            st.session_state.game_message = (
+                "Game reset. Start a new challenge."
+            )
+
+            st.rerun()
