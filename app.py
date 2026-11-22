@@ -94,6 +94,7 @@ DQN_DEFAULTS = {
     "dqn_learning_rate": 0.01, "dqn_training_steps": 0, "dqn_episode_rewards": [],
     "dqn_last_state": None, "dqn_last_action": None, "dqn_last_action_idx": None,
     "dqn_last_q_values": None, "dqn_last_reward": None, "dqn_last_target": None,
+    "dqn_loss_history": [], "dqn_synthetic_history": [], "dqn_action_counts": {}, "dqn_epsilon_history": [],
     "dqn_pending": False, "dqn_recommendation": None, "dqn_experience_count": 0,
     "diagnostic_scores": {}, "posttest_scores": {}, "skill_scores": {},
     "active_teaching_action": None, "teaching_completed": False,
@@ -181,6 +182,8 @@ def add_dqn_experience(state, action_idx, reward, next_state, done=False, label=
     st.session_state.dqn_memory.append((np.asarray(state,dtype=float),int(action_idx),float(reward),np.asarray(next_state,dtype=float),bool(done)))
     if len(st.session_state.dqn_memory)>5000: st.session_state.dqn_memory.pop(0)
     loss=dqn_train_batch()
+    if loss is not None:
+        st.session_state.dqn_loss_history.append({"Update": st.session_state.dqn_training_steps, "Loss": float(loss), "Source": label})
     st.session_state.dqn_log.append({'Experience':len(st.session_state.dqn_memory),'Action':DQN_ACTIONS[action_idx],
         'Reward':round(float(reward),3),'Loss':None if loss is None else round(loss,5),'Source':label,
         'Epsilon':round(float(st.session_state.dqn_epsilon),3)})
@@ -835,34 +838,108 @@ elif selected_page == "DQN Dashboard":
 
 elif selected_page == "Training & Experiments":
     st.markdown('# DQN Training & Experiments')
-    st.warning('Synthetic training is only a software-development simulation. It does not establish educational efficacy or replace real learner data.')
-    episodes=st.number_input('Synthetic episodes',min_value=50,max_value=3000,value=300,step=50)
-    if st.button('Train DQN with simulated learner profiles',type='primary'):
-        profiles=[('struggling',0.25,0.3,0.8),('fast',0.9,0.9,0.1),('inconsistent',0.5,0.55,0.5),('hint-dependent',0.45,0.5,0.7)]
-        rewards=[]
+    st.warning('Synthetic training is a software-development simulation using heuristic preferred actions. It demonstrates the training pipeline, not educational efficacy or real learner performance.')
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        episodes = st.number_input('Episodes in this run', min_value=50, max_value=3000, value=300, step=50)
+    with col2:
+        epsilon_start = st.slider('Starting exploration ε', 0.0, 1.0, float(st.session_state.dqn_epsilon), 0.05)
+    with col3:
+        epsilon_min = st.slider('Minimum ε', 0.0, 1.0, 0.05, 0.01)
+
+    epsilon_decay = st.slider('Exploration decay per episode', 0.95, 1.0, 0.995, 0.001,
+                              help='ε is reduced after each synthetic episode, down to the minimum. This schedule is used in this simulation run.')
+
+    if st.button('Train DQN with simulated learner profiles', type='primary'):
+        profiles = [('struggling',0.25,0.3,0.8),('fast',0.9,0.9,0.1),
+                    ('inconsistent',0.5,0.55,0.5),('hint-dependent',0.45,0.5,0.7)]
+        st.session_state.dqn_epsilon = float(epsilon_start)
+        run_rewards, run_actions, run_qmeans, run_eps, run_losses = [], [], [], [], []
         for ep in range(int(episodes)):
-            name,mastery,acc,err=random.choice(profiles)
-            concept=random.choice(['sequence','loops','conditionals'])
-            state=np.array([concept=='sequence',concept=='loops',concept=='conditionals',mastery,acc,random.random(),err,random.random(),random.random(),mastery,acc,1-err],dtype=float)
-            ideal={'struggling':3 if err>0.5 else 2,'fast':5,'inconsistent':6,'hint-dependent':2}[name]
-            idx,_,q=dqn_choose_action(state,True)
-            reward=(3.0 if idx==ideal else -0.5)+random.uniform(-0.5,0.5)
-            ns=state.copy(); ns[3]=min(1,mastery+random.uniform(0,0.08))
-            add_dqn_experience(state,idx,reward,ns,False,'Synthetic profile')
-            rewards.append(reward)
-        st.session_state.dqn_episode_rewards.extend(rewards)
-        st.success(f"Ran {int(episodes)} simulated episodes. DQN update count: {st.session_state.dqn_training_steps}.")
+            name, mastery, acc, err = random.choice(profiles)
+            concept = random.choice(['sequence','loops','conditionals'])
+            state = np.array([concept=='sequence',concept=='loops',concept=='conditionals',
+                mastery,acc,random.random(),err,random.random(),random.random(),mastery,acc,1-err],dtype=float)
+            ideal = {'struggling':3 if err>0.5 else 2,'fast':5,'inconsistent':6,'hint-dependent':2}[name]
+            idx, reason, q = dqn_choose_action(state, explore=True)
+            reward = (3.0 if idx==ideal else -0.5) + random.uniform(-0.5,0.5)
+            next_state = state.copy()
+            next_state[3] = min(1, mastery+random.uniform(0,0.08))
+            epsilon_used = float(st.session_state.dqn_epsilon)
+            loss = add_dqn_experience(state,idx,reward,next_state,False,'Synthetic profile')
+            run_rewards.append(float(reward)); run_actions.append(DQN_ACTIONS[idx])
+            run_qmeans.append(float(np.mean(q))); run_eps.append(epsilon_used)
+            if loss is not None: run_losses.append(float(loss))
+            st.session_state.dqn_epsilon = max(float(epsilon_min), st.session_state.dqn_epsilon*float(epsilon_decay))
+            st.session_state.dqn_epsilon_history.append({"Episode":len(st.session_state.dqn_episode_rewards)+ep+1,"Epsilon":epsilon_used})
+
+        run_start = len(st.session_state.dqn_episode_rewards)
+        st.session_state.dqn_episode_rewards.extend(run_rewards)
+        for action in run_actions:
+            st.session_state.dqn_action_counts[action] = st.session_state.dqn_action_counts.get(action,0)+1
+        for j, (reward, action, qmean, eps) in enumerate(zip(run_rewards,run_actions,run_qmeans,run_eps)):
+            st.session_state.dqn_synthetic_history.append({
+                "Episode":run_start+j+1,"Reward":reward,"Action":action,
+                "Mean Q-value":qmean,"Epsilon":eps,"Profile source":"Synthetic"
+            })
+        st.success(f"Completed {int(episodes)} simulated episodes. Replay buffer: {len(st.session_state.dqn_memory)} experiences · Training updates: {st.session_state.dqn_training_steps}.")
+
     if st.session_state.dqn_episode_rewards:
-        r=st.session_state.dqn_episode_rewards; w=min(25,len(r)); moving=[np.mean(r[max(0,i-w+1):i+1]) for i in range(len(r))]
-        st.markdown('### Simulated reward curve'); st.line_chart(pd.DataFrame({'Reward':r,'Moving average':moving}))
-        st.metric('Recent mean reward',f"{np.mean(r[-w:]):.2f}")
+        rewards = st.session_state.dqn_episode_rewards
+        window = min(25,len(rewards))
+        moving = [float(np.mean(rewards[max(0,i-window+1):i+1])) for i in range(len(rewards))]
+        synth_df = pd.DataFrame(st.session_state.dqn_synthetic_history)
+        loss_df = pd.DataFrame(st.session_state.dqn_loss_history)
+
+        st.markdown('## Experiment summary')
+        a,b,c,d,e = st.columns(5)
+        a.metric('Episodes recorded',len(rewards))
+        b.metric('Replay experiences',len(st.session_state.dqn_memory))
+        c.metric('Training updates',st.session_state.dqn_training_steps)
+        d.metric('Target-network syncs',st.session_state.dqn_training_steps//10)
+        e.metric('Current ε',f"{st.session_state.dqn_epsilon:.3f}")
+        st.metric('Recent mean reward (last 25 episodes)',f"{np.mean(rewards[-window:]):.2f}")
+
+        st.markdown('## 1. Reward per episode and moving average')
+        st.line_chart(pd.DataFrame({"Episode":range(1,len(rewards)+1),"Reward":rewards,"Moving average (25)":moving}).set_index("Episode"))
+
+        if not loss_df.empty:
+            st.markdown('## 2. Training loss per update')
+            st.line_chart(loss_df.set_index("Update")[["Loss"]])
+            st.caption("Loss is the squared TD error from minibatch training updates; lower loss is not by itself proof of better teaching outcomes.")
+
+        if not synth_df.empty:
+            st.markdown('## 3. Instructional-action selection distribution')
+            counts = synth_df["Action"].value_counts().reindex(DQN_ACTIONS,fill_value=0)
+            st.bar_chart(counts.rename("Selections"))
+
+            st.markdown('## 4. Mean predicted Q-value by episode')
+            st.line_chart(synth_df.set_index("Episode")[["Mean Q-value"]])
+
+            st.markdown('## 5. Exploration (ε) over episodes')
+            st.line_chart(synth_df.set_index("Episode")[["Epsilon"]])
+
+            st.markdown('## Episode-level experiment log')
+            st.dataframe(synth_df,use_container_width=True,hide_index=True)
+            st.download_button("Download synthetic experiment CSV",synth_df.to_csv(index=False),
+                "codequest_synthetic_experiment.csv","text/csv")
+
     st.markdown('### Experimental comparison plan')
-    st.table(pd.DataFrame([{'Approach':'Fixed instruction','Adaptation':'Predefined sequence'}, {'Approach':'Rule-based tutor','Adaptation':'Manual learner thresholds'}, {'Approach':'DQN tutor','Adaptation':'Neural network learns action values from reward'}]))
-    st.markdown('### Reset DQN')
-    if st.button('Reset network and replay memory',type='secondary'):
+    st.table(pd.DataFrame([
+        {'Approach':'Fixed instruction','Adaptation':'Predefined sequence'},
+        {'Approach':'Rule-based tutor','Adaptation':'Manual learner thresholds'},
+        {'Approach':'DQN tutor','Adaptation':'Neural network learns action values from reward'}]))
+
+    st.markdown('### Reset DQN / experiment')
+    if st.button('Reset network, replay memory and experiment graphs',type='secondary'):
         st.session_state.dqn_online=init_network(); st.session_state.dqn_target=copy_network(st.session_state.dqn_online)
-        st.session_state.dqn_memory=[]; st.session_state.dqn_log=[]; st.session_state.dqn_training_steps=0; st.session_state.dqn_episode_rewards=[]
-        st.success('DQN reset.'); st.rerun()
+        st.session_state.dqn_memory=[]; st.session_state.dqn_log=[]; st.session_state.dqn_training_steps=0
+        st.session_state.dqn_episode_rewards=[]; st.session_state.dqn_loss_history=[]
+        st.session_state.dqn_synthetic_history=[]; st.session_state.dqn_action_counts={}
+        st.session_state.dqn_epsilon_history=[]
+        st.session_state.dqn_epsilon=0.25
+        st.success('DQN and experiment history reset.'); st.rerun()
 
 # Adaptive recommendation summary on Game page
 if selected_page == "Game":
