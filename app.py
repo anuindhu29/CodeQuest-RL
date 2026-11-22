@@ -1,4 +1,3 @@
-
 import streamlit as st
 import time
 import csv
@@ -151,6 +150,25 @@ def display_maze(container=None):
         width: fit-content;
         margin: 15px auto;
     }
+    .robot-icon {
+    display: inline-block;
+    font-size: 30px;
+    transition: transform 0.2s ease;
+    }
+    
+    .robot-icon.walking {
+        animation: robot-walk 0.35s ease-in-out infinite;
+    }
+    
+    @keyframes robot-walk {
+        0%, 100% {
+            translate: 0 0;
+        }
+    
+        50% {
+            translate: 0 -4px;
+        }
+    }
 
     .cell {
         width: 48px;
@@ -187,11 +205,25 @@ def display_maze(container=None):
 
         for col in range(7):
 
-            if (row, col) == st.session_state.robot_position:
-
-                cell = ARROWS[st.session_state.robot_direction]
-
-                html += f'<div class="cell robot">{cell}</div>'
+        if (row, col) == st.session_state.robot_position:
+        
+            direction_degrees = (
+                st.session_state.robot_direction * 90
+            )
+        
+            walking_class = (
+                "walking" if st.session_state.get("program_running", False)
+                else ""
+            )
+        
+            html += f"""
+            <div class="cell robot">
+                <span class="robot-icon {walking_class}"
+                      style="transform: rotate({direction_degrees}deg);">
+                    🤖
+                </span>
+            </div>
+            """
 
             elif (row, col) == GOAL:
 
@@ -199,7 +231,7 @@ def display_maze(container=None):
 
             elif (row, col) == START:
 
-                html += '<div class="cell start">START</div>'
+                html += '<div class="cell start">🚩</div>'
 
             elif MAZE[row][col] == 1:
 
