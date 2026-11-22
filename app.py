@@ -210,6 +210,7 @@ def run_student_code(code):
     lines = code.split("\n")
 
     executed = 0
+    errors_before = st.session_state.errors
 
     for line in lines:
 
@@ -219,13 +220,13 @@ def run_student_code(code):
             continue
 
         if line not in commands:
-        
+
             st.session_state.errors += 1
-        
+
             st.session_state.game_message = (
-                f"❌ Invalid command: {line}"
+                f"Invalid command: {line}"
             )
-        
+
             return
 
         commands[line]()
@@ -235,13 +236,35 @@ def run_student_code(code):
         if st.session_state.game_won:
             break
 
-    if executed > 0 and not st.session_state.game_won:
+    errors_during_run = (
+        st.session_state.errors - errors_before
+    )
+
+    if st.session_state.game_won:
 
         st.session_state.game_message = (
-            f"✅ Executed {executed} commands!"
+            "Congratulations! You reached the goal!"
         )
 
+    elif errors_during_run > 0:
 
+        st.session_state.game_message = (
+            f"Program executed {executed} commands, "
+            f"but encountered {errors_during_run} error(s). "
+            "Check your robot's path."
+        )
+
+    elif executed > 0:
+
+        st.session_state.game_message = (
+            f"Program executed {executed} commands successfully."
+        )
+
+    else:
+
+        st.session_state.game_message = (
+            "No commands were entered."
+        )
 # =========================
 # CHALLENGE SYSTEM
 # =========================
